@@ -3,6 +3,7 @@ package main
 import (
 	"boomth/internal/adapter/controller"
 	"boomth/internal/adapter/repository/postgres"
+	"boomth/internal/infrastructure/config"
 	"boomth/internal/infrastructure/db"
 	"boomth/internal/infrastructure/logging"
 	"boomth/internal/usecase/order"
@@ -12,14 +13,23 @@ import (
 )
 
 func main() {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	app := setupApp(cfg)
+	log.Fatal(app.Listen(":" + cfg.Server.Port))
+}
+
+func setupApp(cfg *config.Config) *fiber.App {
 	// Infrastructure
 	logger, err := logging.NewZapLogger()
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	dsn := "host=localhost user=postgres password=8231 dbname=gorm_boom port=5432 sslmode=disable TimeZone=Asia/Bangkok"
-	database, err := db.NewPostgresDB(dsn)
+	database, err := db.NewPostgresDB(cfg.Database.DSN)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -39,6 +49,7 @@ func main() {
 
 	orders := v1.Group("/orders")
 	orders.Get("/", orderController.GetAllOrders)
+	orders.Post("/", orderController.CreateOrder)
 
-	log.Fatal(app.Listen(":3001"))
+	return app
 }

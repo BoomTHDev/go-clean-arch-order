@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"boomth/internal/domain"
 	"boomth/internal/usecase/order"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,24 +29,28 @@ func (c *OrderController) CreateOrder(ctx *fiber.Ctx) error {
 	}
 
 	err := c.orderUseCase.CreateOrder(input)
-	if err != nil {
+
+	switch err.(type) {
+	case domain.ValidationError:
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
+	case nil:
+		return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
+			"message": "Order created successfully",
+		})
+	default:
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Internal server error",
+		})
 	}
-
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Order created successfully",
-	})
 }
 
 func (c *OrderController) GetAllOrders(ctx *fiber.Ctx) error {
 	orders, err := c.orderUseCase.GetAllOrders()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch orders",
-		})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(ErrorResponse("Failed to fetch orders"))
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(orders)
+	return ctx.Status(fiber.StatusOK).JSON(SuccessResponse(orders))
 }
